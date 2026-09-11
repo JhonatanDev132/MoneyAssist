@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --color-brand-yellow: #FFB800;       /* Amarelo vibrante da Hotbar/Destaques */
+  --color-bg-dark: #121214;            /* Fundo geral da aplicação */
+  --color-surface-dark: #1E1E24;       /* Fundo da Navbar, Footer e Cards escuros */
+  --color-surface-border: #2E2E3A;     /* Bordas sutis de separação */
+}
+
+html,
+body {
+  @apply bg-white dark:bg-gray-950;
+
+  @media (prefers-color-scheme: dark) {
+    color-scheme: dark;
+  }
+}
