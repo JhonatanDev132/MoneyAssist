@@ -9,6 +9,13 @@
   --color-surface-border: #2E2E3A;     /* Bordas sutis de separação */
 }
 
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 html,
 body {
   @apply bg-white dark:bg-gray-950;
