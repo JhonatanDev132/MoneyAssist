@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
+import { ref, push, set } from "firebase/database";
+import { auth, database } from "~/service/firebase"; 
 
 const formatadorMoeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -10,6 +13,33 @@ export default function Registrar() {
   const [categoria, setCategoria] = useState("");
   const [outraCategoria, setOutraCategoria] = useState("");
   const [data, setData] = useState("");
+  const navigate = useNavigate();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    const user = auth.currentUser;
+    if (!user) {
+      alert("Usuário não autenticado. Por favor, faça login.");
+      return;
+    }
+
+    const categoriaFinal = categoria === "outros" ? outraCategoria : categoria;
+
+    const gasto = {
+      valor: Number(valor.replace(/\D/g, "")) / 100,
+      categoria: categoriaFinal,
+      data,
+      criadoEm: Date.now(),
+    };
+
+    const gastoRef = ref(database, `usuarios/${user.uid}/gastos`);
+    const novoGastoRef = push(gastoRef);
+
+    await set(novoGastoRef, gasto);
+
+    navigate("/");
+  }
   
   return (
     <div className="w-full h-64 min-h-screen bg-bg-dark p-5">
@@ -17,7 +47,7 @@ export default function Registrar() {
         Registrar Gastos
       </h1>
 
-      <form className="flex flex-col gap-4">
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col">
           <label htmlFor="valor" className="text-white mb-1">
             Valor

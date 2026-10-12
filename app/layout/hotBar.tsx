@@ -4,7 +4,8 @@ export function HotBar() {
 
   const menuItems = [
     { name: "Início", path: "/" },
-    { name: "Registrar", path: "/registrar" }
+    { name: "Registrar", path: "/registrar" },
+    { name: "Listar Gastos", path: "/listar" }
   ]
 
   return (

@@ -7,6 +7,7 @@ export default [
     layout("routes/_index.tsx", [
       index("routes/visaoGeral.tsx"),
       route("registrar", "routes/registrar.tsx"),
+      route("listar", "routes/listarGastos.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;
