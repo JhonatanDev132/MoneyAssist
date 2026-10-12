@@ -3,10 +3,8 @@ import { NavLink } from "react-router";
 export function HotBar() {
 
   const menuItems = [
-    { name: "Dashboard", path: "/" },
-    { name: "Transactions", path: "/transactions" },
-    { name: "Budgets", path: "/budgets" },
-    { name: "Reports", path: "/reports" },
+    { name: "Início", path: "/" },
+    { name: "Registrar", path: "/registrar" }
   ]
 
   return (

@@ -1,6 +1,6 @@
 import { NavBar } from "~/layout/navBar";
 import { HotBar } from "~/layout/hotBar";
-import VisaoGeral from "./visaoGeral";
+import { Outlet } from "react-router";
 
 
 export default function HomeRoute() {
@@ -9,7 +9,7 @@ export default function HomeRoute() {
         <NavBar />
         <div className="flex flex-1">
             <HotBar />
-            <VisaoGeral />
+            <Outlet />
         </div>
     </div>
   );
