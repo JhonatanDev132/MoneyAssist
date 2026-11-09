@@ -8,9 +8,8 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey || "");
 
-// Cache da última análise
-let cacheAnalise: { hash: string; texto: string; timestamp: number } | null = null;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const CACHE_KEY = "moneyassist_analise";
 
 export interface Gasto {
   categoria: string;
@@ -19,11 +18,33 @@ export interface Gasto {
 }
 
 function gerarHashGastos(gastos: Gasto[]): string {
-  const resumo = gastos
-    .map((g) => `${g.categoria}:${g.valor}`)
+  return gastos
+    .map((g) => `${g.categoria}:${g.valor}:${g.data}`)
     .sort()
     .join("|");
-  return resumo;
+}
+
+function lerCache(hash: string): string | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { h, t, texto } = JSON.parse(raw);
+    if (h === hash && Date.now() - t < CACHE_DURATION) {
+      console.log("✅ Usando análise em cache");
+      return texto;
+    }
+  } catch {
+    // sessionStorage indisponível (SSR) ou dado corrompido
+  }
+  return null;
+}
+
+function salvarCache(hash: string, texto: string): void {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ h: hash, t: Date.now(), texto }));
+  } catch {
+    // ignorar falha de escrita
+  }
 }
 
 export async function analisarGastos(gastos: Gasto[]): Promise<string> {
@@ -35,14 +56,10 @@ export async function analisarGastos(gastos: Gasto[]): Promise<string> {
     return "Você ainda não registrou nenhum gasto. Cadastre alguns gastos para receber dicas da IA!";
   }
 
-  // Verifica cache
+  // Verifica cache no sessionStorage (sobrevive ao HMR do Vite)
   const hash = gerarHashGastos(gastos);
-  const agora = Date.now();
-
-  if (cacheAnalise && cacheAnalise.hash === hash && agora - cacheAnalise.timestamp < CACHE_DURATION) {
-    console.log("✅ Usando análise em cache");
-    return cacheAnalise.texto;
-  }
+  const cached = lerCache(hash);
+  if (cached) return cached;
 
   const total = gastos.reduce((soma, gasto) => soma + gasto.valor, 0);
   const porCategoria: Record<string, number> = {};
@@ -62,53 +79,32 @@ export async function analisarGastos(gastos: Gasto[]): Promise<string> {
     ),
   };
 
+  // Prompt enxuto — sem JSON formatado, menos tokens no contexto
+  const linhasCategoria = Object.entries(resumo.gastosPorCategoria)
+    .map(([cat, val]) => `${cat}: R$${val}`)
+    .join(", ");
+
+  const prompt = `Gastos totais: R$${resumo.totalGasto}. Por categoria: ${linhasCategoria}. Escreva 2-3 frases curtas em português: qual categoria gastou mais e uma dica de economia. Sem markdown.`;
+
   try {
-    // Tenta primeiro o modelo mais recente
-    let model = genAI.getGenerativeModel({
-      model: "gemini-3.8-flash",
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 150,
-      }
-    });
-
-    const prompt = `Analise brevemente os gastos em R$:
-${JSON.stringify(resumo, null, 2)}
-
-Escreva apenas 2-3 frases curtas em português:
-1. Categoria com mais gasto
-2. Uma dica rápida de economia
-
-Sem markdown, direto ao ponto.`;
+    // Sem generationConfig — usa padrões nativos do modelo (evita latência por parâmetros descontinuados)
+    let model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
 
     try {
       const result = await model.generateContent(prompt);
       const texto = result.response.text();
-
-      // Salva no cache
-      cacheAnalise = { hash, texto, timestamp: agora };
-
+      salvarCache(hash, texto);
       return texto;
     } catch (err: any) {
-      // Se 503 (high demand), tenta modelo alternativo
-      if (err?.message?.includes('503') || err?.message?.includes('high demand')) {
+      // Fallback para modelo anterior em caso de sobrecarga (503)
+      if (err?.message?.includes("503") || err?.message?.includes("high demand")) {
         console.log("⚠️ Modelo principal sobrecarregado, tentando alternativo...");
-
-        model = genAI.getGenerativeModel({
-          model: "gemini-3.6-flash",
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 150,
-          }
-        });
-
+        model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
         const result = await model.generateContent(prompt);
         const texto = result.response.text();
-
-        cacheAnalise = { hash, texto, timestamp: agora };
+        salvarCache(hash, texto);
         return texto;
       }
-
       throw err;
     }
   } catch (error) {

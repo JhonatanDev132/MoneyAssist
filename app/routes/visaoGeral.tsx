@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ref, onValue } from "firebase/database";
 import { auth, database } from "~/service/firebase";
 import { analisarGastos, type Gasto } from "~/service/gemini";
@@ -9,6 +9,8 @@ export default function VisaoGeral() {
   const [analise, setAnalise] = useState<string>("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string>("");
+  // Debounce: evita chamar a API a cada micro-atualização do Firebase
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -16,7 +18,7 @@ export default function VisaoGeral() {
 
     const gastosRef = ref(database, `usuarios/${user.uid}/gastos`);
 
-    const unsubscribe = onValue(gastosRef, async (snapshot) => {
+    const unsubscribe = onValue(gastosRef, (snapshot) => {
       const dados = snapshot.val() ?? {};
       const gastos: Gasto[] = Object.values(dados).map((gasto: any) => ({
         categoria: gasto.categoria ?? "Outros",
@@ -24,24 +26,30 @@ export default function VisaoGeral() {
         data: gasto.data ?? "",
       }));
 
-      setCarregando(true);
-      setErro("");
+      // Cancela chamada pendente e aguarda 800ms de "silêncio" antes de chamar a API
+      if (debounceRef.current) clearTimeout(debounceRef.current);
 
-      try {
-        const resultado = await analisarGastos(gastos);
-        setAnalise(resultado);
-      } catch (err) {
-        const mensagemErro = err instanceof Error ? err.message : String(err);
-        setErro(`Erro: ${mensagemErro}`);
-        console.error("❌ Erro detalhado ao analisar gastos:", err);
-        console.error("Tipo do erro:", typeof err);
-        console.error("Stack:", (err as any)?.stack);
-      } finally {
-        setCarregando(false);
-      }
+      debounceRef.current = setTimeout(async () => {
+        setCarregando(true);
+        setErro("");
+
+        try {
+          const resultado = await analisarGastos(gastos);
+          setAnalise(resultado);
+        } catch (err) {
+          const mensagemErro = err instanceof Error ? err.message : String(err);
+          setErro(`Erro: ${mensagemErro}`);
+          console.error("❌ Erro detalhado ao analisar gastos:", err);
+        } finally {
+          setCarregando(false);
+        }
+      }, 800);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, []);
 
   return (
