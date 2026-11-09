@@ -9,6 +9,7 @@
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@react-router/node": "^8",
     "@react-router/serve": "^8",
     "firebase": "^12.19.0",
