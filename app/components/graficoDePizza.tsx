@@ -103,10 +103,23 @@ export function GraficoPizza({
       const dados = snapshot.val() ?? {};
 
       const agrupado: Record<string, number> = {};
+      const agora = new Date();
+      const anoAtual = agora.getFullYear();
+      const mesAtual = agora.getMonth() + 1;
 
       Object.values(dados).forEach((gasto: any) => {
+        if (typeof gasto.data !== "string") return;
+
+        const data = /^(\d{4})-(\d{2})-(\d{2})$/.exec(gasto.data);
+        if (!data) return;
+
+        const ano = Number(data[1]);
+        const mes = Number(data[2]);
+        if (ano !== anoAtual || mes !== mesAtual) return;
+
         const valor = Number(gasto.valor ?? 0);
-        agrupado[gasto.categoria] = (agrupado[gasto.categoria] || 0) + valor;
+        const categoria = gasto.categoria ?? "Outros";
+        agrupado[categoria] = (agrupado[categoria] || 0) + valor;
       });
 
       const resultado = Object.entries(agrupado).map(([categoria, gasto]) => ({

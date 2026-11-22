@@ -18,11 +18,21 @@ export default function VisaoGeral() {
 
     const unsubscribe = onValue(gastosRef, async (snapshot) => {
       const dados = snapshot.val() ?? {};
-      const gastos: Gasto[] = Object.values(dados).map((gasto: any) => ({
-        categoria: gasto.categoria ?? "Outros",
-        valor: Number(gasto.valor ?? 0),
-        data: gasto.data ?? "",
-      }));
+      const agora = new Date();
+      const prefixoMesAtual = `${agora.getFullYear()}-${String(
+        agora.getMonth() + 1
+      ).padStart(2, "0")}-`;
+
+      const gastos: Gasto[] = Object.values(dados)
+        .filter((gasto: any) =>
+          typeof gasto.data === "string" &&
+          gasto.data.startsWith(prefixoMesAtual)
+        )
+        .map((gasto: any) => ({
+          categoria: gasto.categoria ?? "Outros",
+          valor: Number(gasto.valor ?? 0),
+          data: gasto.data,
+        }));
 
       setCarregando(true);
       setErro("");

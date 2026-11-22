@@ -15,6 +15,20 @@ type DadosMes = {
   gasto: number;
 };
 
+function dataLocal(data: unknown): Date | null {
+  if (typeof data !== "string" || !data) return null;
+
+  const somenteData = data.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (somenteData) {
+    const [, ano, mes, dia] = somenteData;
+    const dataObj = new Date(Number(ano), Number(mes) - 1, Number(dia));
+    return Number.isNaN(dataObj.getTime()) ? null : dataObj;
+  }
+
+  const dataObj = new Date(data);
+  return Number.isNaN(dataObj.getTime()) ? null : dataObj;
+}
+
 export function GraficoBarra() {
   const [data, setData] = useState<DadosMes[]>([]);
 
@@ -34,17 +48,8 @@ export function GraficoBarra() {
       const totalPorMes = new Map<string, number>();
 
       gastos.forEach((gasto) => {
-        const dataStr = gasto.dataIso || gasto.data;
-
-        if (!dataStr) return;
-
-        const dataObj = new Date(
-          dataStr.includes("-")
-            ? `${dataStr}T00:00:00`
-            : `${dataStr}T00:00:00`
-        );
-
-        if (Number.isNaN(dataObj.getTime())) return;
+        const dataObj = dataLocal(gasto.data);
+        if (!dataObj) return;
 
         const chave = `${dataObj.getFullYear()}-${String(
           dataObj.getMonth() + 1
@@ -59,7 +64,10 @@ export function GraficoBarra() {
         .map(([chave, total]) => {
           const dataObj = new Date(`${chave}-01T00:00:00`);
           return {
-            mes: new Intl.DateTimeFormat("pt-BR", { month: "short" }).format(dataObj),
+            mes: new Intl.DateTimeFormat("pt-BR", {
+              month: "short",
+              year: "numeric",
+            }).format(dataObj),
             gasto: Number(total.toFixed(2)),
           };
         });
