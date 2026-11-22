@@ -25,10 +25,15 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("tema")==="light")document.documentElement.dataset.theme="light"}catch(e){}`,
+          }}
+        />
         <Meta />
         <Links />
       </head>
@@ -46,15 +51,15 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = "Ops!";
+  let details = "Algo deu errado. Tente recarregar a página.";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message = error.status === 404 ? "404" : "Erro";
     details =
       error.status === 404
-        ? "The requested page could not be found."
+        ? "Não encontramos a página que você procurou."
         : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
@@ -62,9 +67,10 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
+    <main className="container mx-auto flex min-h-screen flex-col items-center justify-center gap-3 p-4 text-center">
+      <h1 className="text-4xl font-bold text-brand-yellow">{message}</h1>
+      <p className="text-zinc-300">{details}</p>
+      <a href="/" className="mt-2 rounded-lg bg-brand-yellow px-4 py-2.5 font-semibold text-on-brand hover:brightness-110">Voltar ao início</a>
       {stack && (
         <pre className="w-full p-4 overflow-x-auto">
           <code>{stack}</code>

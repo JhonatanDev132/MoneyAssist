@@ -1,92 +1,90 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword } from "firebase/auth";
-import { useEffect } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { Link } from "react-router";
-
-
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth } from "~/service/firebase";
+import { AuthShell, Campo, Spinner, classeBotaoPrimario, classeBotaoSecundario, classeInput, mensagemErroAuth } from "~/components/ui";
 
 export default function LoginRoute() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState<"" | "email" | "google">("");
   const navigate = useNavigate();
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) navigate("/");
-        });
-            return unsubscribe;
-    }, [navigate]);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) navigate("/");
+    });
+    return unsubscribe;
+  }, [navigate]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (!email.trim() || !senha) return setErro("Preencha o e-mail e a senha.");
+    setErro("");
+    setEnviando("email");
     try {
-      await signInWithEmailAndPassword(auth, email, senha);
+      await signInWithEmailAndPassword(auth, email.trim(), senha);
       navigate("/");
-    } catch {
-      setErro("E-mail ou senha inválidos");
+    } catch (e) {
+      setErro(mensagemErroAuth(e, "Não foi possível entrar. Tente novamente."));
+      setEnviando("");
     }
   }
 
   async function handleGoogleLogin() {
-    const provider = new GoogleAuthProvider();
+    setErro("");
+    setEnviando("google");
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(auth, new GoogleAuthProvider());
       navigate("/");
-    } catch (error) {
-      setErro("Não foi possível entrar com o Google");
+    } catch (e) {
+      setErro(mensagemErroAuth(e, "Não foi possível entrar com o Google."));
+      setEnviando("");
     }
   }
 
+  const ocupado = enviando !== "";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-dark">
-      <form onSubmit={handleLogin} className="bg-surface-dark border border-surface-border p-8 rounded-lg w-80 flex flex-col gap-4">
-        <h1 className="text-xl font-bold text-brand-yellow text-center">Money Assist</h1>
+    <AuthShell titulo="Bem-vindo de volta" subtitulo="Entre para acompanhar seus gastos">
+      <form onSubmit={handleLogin} noValidate className="flex flex-col gap-4">
+        <Campo id="email" rotulo="E-mail">
+          <input id="email" type="email" autoComplete="email" placeholder="voce@exemplo.com" value={email}
+            onChange={(e) => setEmail(e.target.value)} className={classeInput} disabled={ocupado} />
+        </Campo>
 
-        <input
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="p-2 rounded bg-bg-dark border border-surface-border text-white"
-        />
-        <input
-          type="password"
-          placeholder="Senha"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          className="p-2 rounded bg-bg-dark border border-surface-border text-white"
-        />
+        <Campo id="senha" rotulo="Senha">
+          <div className="relative">
+            <input id="senha" type={mostrarSenha ? "text" : "password"} autoComplete="current-password" placeholder="Sua senha"
+              value={senha} onChange={(e) => setSenha(e.target.value)} className={`${classeInput} pr-16`} disabled={ocupado} />
+            <button type="button" onClick={() => setMostrarSenha((v) => !v)} aria-pressed={mostrarSenha}
+              className="absolute inset-y-0 right-2 my-auto h-8 rounded px-2 text-xs font-medium text-zinc-400 hover:text-white">
+              {mostrarSenha ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
+        </Campo>
 
-        {erro && <p className="text-red-500 text-sm">{erro}</p>}
+        {erro && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{erro}</p>}
 
-        <button type="submit" className="bg-brand-yellow font-bold p-2 rounded text-black">
-          Entrar
+        <button type="submit" disabled={ocupado} className={classeBotaoPrimario}>
+          {enviando === "email" && <Spinner />} {enviando === "email" ? "Entrando..." : "Entrar"}
         </button>
 
-        <div className="flex items-center my-1">
-          <div className="flex-grow border-t border-surface-border"></div>
-          <span className="mx-2 text-xs text-gray-400">ou</span>
-          <div className="flex-grow border-t border-surface-border"></div>
+        <div className="flex items-center gap-3 text-xs text-zinc-500">
+          <span className="h-px flex-1 bg-surface-border" /> ou <span className="h-px flex-1 bg-surface-border" />
         </div>
 
-        <button 
-          type="button" 
-          onClick={handleGoogleLogin} 
-          className="border border-surface-border p-2 rounded font-bold text-white hover:bg-neutral-800 transition-colors"
-        >
-          Entrar com Google
+        <button type="button" onClick={handleGoogleLogin} disabled={ocupado} className={classeBotaoSecundario}>
+          {enviando === "google" && <Spinner />} Continuar com Google
         </button>
-        <p className="text-sm text-center text-white">
-            Ainda não tem conta?{" "}
-            <Link to="/cadastro" className="text-brand-yellow font-bold hover:underline">
-                Cadastre-se
-            </Link>
-        </p>
       </form>
-    </div>
+
+      <p className="mt-5 text-center text-sm text-zinc-300">
+        Ainda não tem conta?{" "}
+        <Link to="/cadastro" className="font-semibold text-brand-yellow hover:underline">Cadastre-se</Link>
+      </p>
+    </AuthShell>
   );
 }

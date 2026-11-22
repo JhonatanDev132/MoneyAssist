@@ -1,53 +1,62 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "~/service/firebase";
+import { AuthShell, Campo, Spinner, classeBotaoPrimario, classeInput, mensagemErroAuth } from "~/components/ui";
 
 export default function CadastroRoute() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState(false);
   const navigate = useNavigate();
 
   async function handleCadastro(e: React.FormEvent) {
     e.preventDefault();
+    if (!email.trim()) return setErro("Digite seu e-mail.");
+    if (senha.length < 6) return setErro("A senha precisa ter pelo menos 6 caracteres.");
+    setErro("");
+    setEnviando(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, senha);
+      await createUserWithEmailAndPassword(auth, email.trim(), senha);
       navigate("/");
-    } catch {
-      setErro("Não foi possível criar a conta");
+    } catch (e) {
+      setErro(mensagemErroAuth(e, "Não foi possível criar a conta. Tente novamente."));
+      setEnviando(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-dark">
-      <form
-        onSubmit={handleCadastro}
-        className="bg-surface-dark border border-surface-border p-8 rounded-lg w-80 flex flex-col gap-4"
-      >
-        <h1 className="text-xl font-bold text-brand-yellow text-center">Criar conta</h1>
+    <AuthShell titulo="Criar conta" subtitulo="Comece a controlar seus gastos em segundos">
+      <form onSubmit={handleCadastro} noValidate className="flex flex-col gap-4">
+        <Campo id="email" rotulo="E-mail">
+          <input id="email" type="email" autoComplete="email" placeholder="voce@exemplo.com" value={email}
+            onChange={(e) => setEmail(e.target.value)} className={classeInput} disabled={enviando} />
+        </Campo>
 
-        <input
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="p-2 rounded bg-bg-dark border border-surface-border text-white"
-        />
-        <input
-          type="password"
-          placeholder="Senha"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          className="p-2 rounded bg-bg-dark border border-surface-border text-white"
-        />
+        <Campo id="senha" rotulo="Senha" dica="Mínimo de 6 caracteres.">
+          <div className="relative">
+            <input id="senha" type={mostrarSenha ? "text" : "password"} autoComplete="new-password" placeholder="Crie uma senha"
+              value={senha} onChange={(e) => setSenha(e.target.value)} className={`${classeInput} pr-16`} disabled={enviando} />
+            <button type="button" onClick={() => setMostrarSenha((v) => !v)} aria-pressed={mostrarSenha}
+              className="absolute inset-y-0 right-2 my-auto h-8 rounded px-2 text-xs font-medium text-zinc-400 hover:text-white">
+              {mostrarSenha ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
+        </Campo>
 
-        {erro && <p className="text-red-500 text-sm">{erro}</p>}
+        {erro && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{erro}</p>}
 
-        <button type="submit" className="bg-brand-yellow font-bold p-2 rounded">
-          Cadastrar
+        <button type="submit" disabled={enviando} className={classeBotaoPrimario}>
+          {enviando && <Spinner />} {enviando ? "Criando conta..." : "Cadastrar"}
         </button>
       </form>
-    </div>
+
+      <p className="mt-5 text-center text-sm text-zinc-300">
+        Já tem conta?{" "}
+        <Link to="/login" className="font-semibold text-brand-yellow hover:underline">Entrar</Link>
+      </p>
+    </AuthShell>
   );
 }
