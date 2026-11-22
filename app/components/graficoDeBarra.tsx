@@ -18,6 +18,20 @@ function somarPorMes(dados: Record<string, any>): Map<string, number> {
   return mapa;
 }
 
+function dataLocal(data: unknown): Date | null {
+  if (typeof data !== "string" || !data) return null;
+
+  const somenteData = data.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (somenteData) {
+    const [, ano, mes, dia] = somenteData;
+    const dataObj = new Date(Number(ano), Number(mes) - 1, Number(dia));
+    return Number.isNaN(dataObj.getTime()) ? null : dataObj;
+  }
+
+  const dataObj = new Date(data);
+  return Number.isNaN(dataObj.getTime()) ? null : dataObj;
+}
+
 export function GraficoBarra() {
   const [gastos, setGastos] = useState<Map<string, number>>(new Map());
   const [ganhos, setGanhos] = useState<Map<string, number>>(new Map());
